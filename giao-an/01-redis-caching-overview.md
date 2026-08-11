@@ -129,12 +129,15 @@ Bây giờ bạn đã thấu hiểu cơ chế rồi, chúng ta mới gắn các 
 
 ---
 
-## Bước 5: Bài tập tư duy (Sự đánh đổi)
+## Bước 5: Bài tập tư duy (Sự mở rộng)
 
-Trong vũ trụ này, bạn luôn phải đánh đổi. Bảng trắng (RAM) thì nhanh như chớp, nhưng có một nhược điểm chí mạng:
+Cái bảng trắng này hiện tại hoạt động rất tốt, nhưng nó chỉ đang ghi những dòng chữ vô tri đơn giản (String) theo kiểu: `Khóa = Chuỗi văn bản`.
 
-**Nếu cúp điện (server tắt ngúm), thanh RAM sẽ bị xóa sạch, cái bảng trắng bay màu hoàn toàn!**
+Nhưng giả sử bạn không quản lý thư viện sách nữa, mà sếp giao cho bạn quản lý **Bảng xếp hạng (Leaderboard)** của 1 triệu người chơi game Flappy Bird. Điểm số của họ thay đổi liên tục từng giây.
 
-Vậy nếu bạn là kiến trúc sư của Redis, làm sao bạn vừa giữ được tốc độ xé gió của bảng trắng (RAM), lại vừa không bị mất dữ liệu khi cúp điện? 
+Nếu bạn cứ dùng cái bảng trắng này, liên tục xóa đi viết lại một cái danh sách dài ngoằng, sau đó lôi hàng triệu cái tên ra đếm và sắp xếp lại từ đầu... thì nó sẽ cực kỳ lộn xộn và chậm chạp.
 
-*(Gợi ý: Hãy nghĩ đến việc thuê một thư ký, cứ 5 phút lại lấy máy ảnh chụp lại cái bảng trắng một lần... Hẹn gặp lại bạn ở bài 2: Persistence - Sự bền bỉ của dữ liệu trong Redis).*
+**Câu hỏi dành cho bạn suy nghĩ trước bài học tiếp theo:** 
+Nếu bạn là kiến trúc sư của Redis, bạn sẽ thiết kế "hình dáng" của cái bảng trắng này như thế nào? Làm sao để lưu trữ điểm số mà mỗi lần có người hỏi "Cho tôi Top 10", bạn không cần mất công đi sắp xếp lại từ đầu? 
+
+*(Gợi ý: Đừng dùng bút dạ viết nữa, hãy tưởng tượng một tấm bảng gỗ có các khe trượt... Hẹn gặp lại bạn ở Phần 2: Hình Dáng Của Dữ Liệu).*
