@@ -1,0 +1,813 @@
+<title>Hình Dáng Dữ Liệu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root, html {
+    color-scheme: dark;
+    --bg: #0E2A47;
+    --bg-raised: #153A5E;
+    --bg-sunken: #0A2038;
+    --grid-minor: rgba(255,255,255,0.035);
+    --grid-major: rgba(255,255,255,0.07);
+    --line: #2E5480;
+    --ink: #EAF2FB;
+    --ink-dim: #9FB6D2;
+    --ink-faint: #6E88AA;
+    --amber: #FFB454;
+    --amber-ink: #241505;
+    --cyan: #6FE3FF;
+    --coral: #FF8A80;
+    --mint: #6FE3A0;
+    --violet: #C9A6FF;
+    --gold: #FFD166;
+    --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --font-body: 'Be Vietnam Pro', 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid-minor) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px),
+      linear-gradient(var(--grid-major) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; margin: 0 0 .5rem; text-wrap: balance; color: var(--ink); }
+  h1 { font-size: clamp(2.6rem, 7vw, 4.6rem); line-height: .98; font-weight: 800; }
+  h2 { font-size: clamp(1.7rem, 4vw, 2.4rem); }
+  h3 { font-size: clamp(1.3rem, 2.6vw, 1.6rem); color: var(--cyan); }
+  p { margin: 0 0 1rem; color: var(--ink-dim); max-width: 68ch; }
+  a { color: var(--cyan); }
+
+  .mono { font-family: var(--font-mono); }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
+
+  /* corner-bracket frame, pure CSS, no extra markup */
+  .frame {
+    position: relative;
+    background-image:
+      linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
+      linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
+      linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan)),
+      linear-gradient(var(--cyan), var(--cyan)), linear-gradient(var(--cyan), var(--cyan));
+    background-repeat: no-repeat;
+    background-size: 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px, 16px 2px, 2px 16px;
+    background-position:
+      left 0 top 0, left 0 top 0,
+      right 0 top 0, right 0 top 0,
+      left 0 bottom 0, left 0 bottom 0,
+      right 0 bottom 0, right 0 bottom 0;
+    opacity: .9;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    font-size: .78rem;
+    color: var(--amber);
+    margin: 0 0 1rem;
+  }
+
+  .fig-label {
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    letter-spacing: .12em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: .6rem;
+  }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 5.5rem 0 3rem; }
+  .hero .lede { font-size: 1.08rem; color: var(--ink-dim); max-width: 62ch; }
+
+  .quicknav { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.6rem; }
+  .quicknav a {
+    font-family: var(--font-mono);
+    font-size: .75rem;
+    letter-spacing: .06em;
+    text-decoration: none;
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    padding: .45rem .8rem;
+    border-radius: 2px;
+    transition: color .2s ease, border-color .2s ease;
+  }
+  .quicknav a:hover, .quicknav a:focus-visible { color: var(--amber); border-color: var(--amber); }
+
+  /* ---------- sections ---------- */
+  section { padding: 3.4rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: none; }
+
+  .section-pad { padding: 2rem clamp(1.2rem, 3vw, 2.2rem); background: var(--bg-raised); }
+
+  /* ---------- controls ---------- */
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem; margin: 1.4rem 0 1.8rem; }
+
+  .btn-primary, .btn-secondary, .btn-mini {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: .02em;
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .btn-primary {
+    background: var(--amber);
+    color: var(--amber-ink);
+    font-size: 1.05rem;
+    padding: .8rem 1.4rem;
+    box-shadow: 0 0 0 1px rgba(255,180,84,.4), 0 8px 20px -8px rgba(255,180,84,.5);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--coral);
+    border: 1px solid var(--coral);
+    font-size: .85rem;
+    padding: .6rem 1rem;
+    width: 100%;
+  }
+  .btn-secondary:disabled { opacity: .4; cursor: default; }
+
+  .btn-mini {
+    background: transparent;
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-size: .82rem;
+    padding: .5rem .9rem;
+    white-space: nowrap;
+  }
+  .btn-mini:hover { background: rgba(111,227,255,.1); }
+
+  button:focus-visible, input:focus-visible, .swatch:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  .toggle {
+    display: flex; align-items: center; gap: .5rem;
+    font-family: var(--font-mono); font-size: .8rem; color: var(--ink-dim);
+  }
+  .toggle input { accent-color: var(--amber); width: 15px; height: 15px; }
+
+  /* ---------- duel (mysql vs redis) ---------- */
+  .duel { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  @media (max-width: 820px) { .duel { grid-template-columns: 1fr; } }
+
+  .duel-col { padding: 1.2rem 1.2rem 1.4rem; display: flex; flex-direction: column; gap: .8rem; }
+  .duel-col.mysql { background: var(--bg-sunken); }
+  .duel-col.redis { background: var(--bg-sunken); }
+
+  .duel-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+  .tag {
+    font-family: var(--font-display); font-weight: 700; font-size: 1rem;
+    padding: .2rem .6rem; border-radius: 2px; letter-spacing: .01em;
+  }
+  .tag-coral { background: rgba(255,138,128,.14); color: var(--coral); border: 1px solid rgba(255,138,128,.5); }
+  .tag-amber { background: rgba(255,180,84,.14); color: var(--amber); border: 1px solid rgba(255,180,84,.5); }
+
+  .stat { font-family: var(--font-mono); font-size: .74rem; color: var(--ink-faint); }
+  .duel-caption { font-size: .85rem; color: var(--ink-faint); margin: -.3rem 0 0; }
+
+  .status-chip {
+    align-self: flex-start;
+    font-family: var(--font-mono); font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+    padding: .25rem .55rem; border-radius: 2px; transition: background .2s ease, color .2s ease;
+  }
+  .status-chip.dirty { background: rgba(255,138,128,.16); color: var(--coral); }
+  .status-chip.sorted { background: rgba(111,227,160,.16); color: var(--mint); }
+
+  /* pile (mysql, unsorted) */
+  .pile { display: flex; flex-direction: column; gap: .4rem; min-height: 120px; }
+  .card, .slot {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr auto;
+    align-items: center;
+    gap: .7rem;
+    padding: .4rem .6rem;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: .82rem;
+  }
+  .card .rank, .slot .rank {
+    color: var(--ink-faint);
+    font-weight: 600;
+    text-align: center;
+  }
+  .card .rank.dash { color: var(--ink-faint); opacity: .5; }
+  .card.top10 .rank, .slot.top10 .rank { color: var(--amber); }
+  .pname { color: var(--ink); font-family: var(--font-body); font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pscore { font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+  .card.overflow, .slot.overflow { opacity: .5; }
+
+  .slot { grid-template-columns: 1.6rem 1fr 4.5rem auto; }
+  .bar-track { height: 6px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+  .bar-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--amber), var(--gold)); transition: width .5s ease; }
+  .cutoff {
+    font-family: var(--font-mono); font-size: .66rem; letter-spacing: .1em; color: var(--ink-faint);
+    text-align: center; margin: .3rem 0; border-top: 1px dashed var(--line); padding-top: .4rem;
+  }
+
+  .pulse { animation: pulseGlow .8s ease; }
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(255,180,84,.55); }
+    100% { box-shadow: 0 0 0 10px rgba(255,180,84,0); }
+  }
+  .enter { animation: fadeIn .4s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .scanner { display: flex; flex-direction: column; gap: .4rem; }
+  .scanner-bar { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; }
+  .scanner-fill { display: block; height: 100%; width: 0%; background: var(--coral); }
+  .scanner-text { font-family: var(--font-mono); font-size: .72rem; color: var(--coral); margin: 0; }
+
+  /* ---------- mechanism cards (list / set / hash) ---------- */
+  .mech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.4rem; margin-top: 1.6rem; }
+  @media (max-width: 900px) { .mech-grid { grid-template-columns: 1fr; } }
+  .mech-card { padding: 1.4rem; background: var(--bg-raised); display: flex; flex-direction: column; gap: .7rem; }
+  .mech-stat { font-family: var(--font-mono); font-size: .78rem; color: var(--ink-faint); margin: .2rem 0 0; }
+
+  /* list / pipe */
+  .pipe-wrap { display: flex; align-items: center; gap: .6rem; }
+  .pipe {
+    flex: 1; display: flex; align-items: center; gap: 6px;
+    min-height: 46px; padding: 6px 10px;
+    background: var(--bg-sunken);
+    border-top: 2px solid var(--line); border-bottom: 2px solid var(--line);
+    overflow: hidden;
+  }
+  .envelope {
+    flex: none;
+    width: 26px; height: 18px;
+    background: rgba(111,227,255,.12);
+    border: 1.5px solid var(--cyan);
+    clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%);
+    transition: transform .4s ease, opacity .4s ease;
+  }
+  .envelope.entering { transform: translateX(-30px); opacity: 0; }
+  .envelope.leaving { transform: translateX(30px) !important; opacity: 0 !important; }
+
+  /* set / basket */
+  .swatches { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.25);
+    background: var(--c);
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .swatch:hover { transform: scale(1.12); }
+
+  .basket-stage { position: relative; }
+  .basket {
+    min-height: 90px;
+    display: flex; flex-wrap: wrap; align-content: flex-end; gap: 3px;
+    padding: 10px 14px;
+    background: var(--bg-sunken);
+    clip-path: polygon(12% 0, 88% 0, 100% 100%, 0% 100%);
+    border-bottom: 2px solid var(--line);
+  }
+  .ball {
+    --c: var(--cyan);
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--c);
+    box-shadow: inset -2px -2px 4px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.15);
+    transition: transform .45s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+  }
+  .ball.drop { transform: translateY(-46px); opacity: 0; }
+  .ball.reject {
+    position: absolute; top: -4px; left: 50%; margin-left: -9px; z-index: 5;
+    transition: transform .6s ease, opacity .6s ease;
+  }
+  .ball.reject.bounce { transform: translateY(-32px) translateX(22px) rotate(35deg); opacity: 0; }
+
+  /* hash / cabinet */
+  .cabinet { display: flex; flex-direction: column; gap: 6px; }
+  .drawer { background: var(--bg-sunken); border: 1px solid var(--line); }
+  .drawer-front {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .55rem .8rem; cursor: pointer;
+    font-family: var(--font-mono); font-size: .8rem;
+  }
+  .d-label { color: var(--ink-faint); text-transform: uppercase; letter-spacing: .08em; font-size: .68rem; }
+  .d-value { color: var(--ink); font-size: .88rem; }
+  .d-value.pulse { animation: pulseGlow .8s ease; }
+  .drawer-inner {
+    max-height: 0; overflow: hidden;
+    transition: max-height .3s ease, padding .3s ease;
+    padding: 0 .8rem;
+  }
+  .drawer.open .drawer-inner { max-height: 60px; padding: 0 .8rem .7rem; }
+  .drawer.open .drawer-front { background: rgba(111,227,255,.06); }
+  .drawer-inner input {
+    width: 100%; background: var(--bg); border: 1px solid var(--cyan); color: var(--ink);
+    font-family: var(--font-body); font-size: .85rem; padding: .4rem .5rem; border-radius: 2px;
+  }
+
+  /* ---------- code panel ---------- */
+  .code-panel { padding: 1.4rem; background: var(--bg-sunken); overflow-x: auto; }
+  pre.code-block { margin: 0; }
+  code { font-family: var(--font-mono); font-size: .82rem; line-height: 1.7; color: var(--ink-dim); white-space: pre; }
+  .tok-kw { color: var(--cyan); }
+  .tok-type { color: var(--gold); }
+  .tok-str { color: var(--mint); }
+  .tok-comment { color: var(--ink-faint); font-style: italic; }
+  .tok-fn { color: var(--amber); }
+  .tok-anno { color: var(--violet); }
+  .tok-dim { color: var(--ink-faint); }
+
+  /* ---------- toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 1.6rem; transform: translate(-50%, 20px);
+    background: var(--bg-raised); border: 1px solid var(--coral); color: var(--coral);
+    font-family: var(--font-mono); font-size: .8rem; padding: .6rem 1rem; border-radius: 2px;
+    opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- teaser ---------- */
+  .teaser { background: var(--bg-raised); padding: 3rem clamp(1.2rem, 4vw, 3rem); }
+  .teaser .hint { color: var(--amber); font-family: var(--font-mono); font-size: .85rem; }
+
+  footer { padding: 2.4rem 0 4rem; }
+  footer p { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
+</style>
+
+<header class="wrap hero">
+  <p class="eyebrow">Giáo án Redis · Phần 2</p>
+  <h1>Hình Dáng<br>Của Dữ Liệu</h1>
+  <p class="lede">Redis không chỉ là nơi cất chuỗi văn bản vô tri. Nó là một xưởng cơ khí, với những dụng cụ được thiết kế riêng cho từng bài toán: tấm bảng gỗ có khe trượt, cái ống nước một chiều, cái rổ kỳ diệu, cái tủ ngăn kéo. Kéo xuống và tự tay vặn thử từng cái.</p>
+  <nav class="quicknav">
+    <a href="#sim">① Bảng xếp hạng</a>
+    <a href="#code">② Code Java</a>
+    <a href="#mech">③ List · Set · Hash</a>
+    <a href="#next">④ Bài toán kế tiếp</a>
+  </nav>
+</header>
+
+<section id="sim">
+  <div class="wrap">
+    <div class="fig-label">Fig. 1 — Game Flappy Bird, 1.000.000 người chơi</div>
+    <h2>Ai đang đứng Top 10 ngay lúc này?</h2>
+    <p>Mỗi khi một người chơi ghi thêm điểm, hai cơ sở dữ liệu bên dưới nhận được đúng một sự kiện giống hệt nhau. Xem cách chúng phản ứng khác nhau ra sao — cùng một tin, một bên phải làm lại từ đầu, một bên chỉ trượt nhẹ vào đúng chỗ.</p>
+
+    <div class="controls">
+      <button id="scoreBtn" class="btn-primary">🎮 Một người chơi vừa ghi điểm</button>
+      <label class="toggle"><input type="checkbox" id="crowdToggle"> Mô phỏng 1.000 người xem bảng xếp hạng cùng lúc</label>
+    </div>
+
+    <div class="duel">
+      <div class="duel-col mysql frame">
+        <div class="duel-head">
+          <span class="tag tag-coral">MySQL</span>
+          <span class="stat mono" id="mysqlStat">Đã sắp xếp lại: 0 lần</span>
+        </div>
+        <span class="status-chip dirty" id="dirtyBadge">Chưa sắp xếp</span>
+        <p class="duel-caption">Điểm rơi thẳng vào rổ, không theo thứ tự nào cả.</p>
+        <div class="pile" id="mysqlPile"></div>
+        <button id="sortBtn" class="btn-secondary mono">SELECT … ORDER BY score DESC LIMIT 10</button>
+        <div class="scanner" id="scanner" hidden>
+          <div class="scanner-bar"><div class="scanner-fill" id="scannerFill"></div></div>
+          <p class="scanner-text" id="scannerText">Đang quét...</p>
+        </div>
+      </div>
+
+      <div class="duel-col redis frame">
+        <div class="duel-head">
+          <span class="tag tag-amber">Redis · ZSet</span>
+          <span class="stat mono" id="redisStat">Tự trượt: 0 lần</span>
+        </div>
+        <span class="status-chip sorted">Luôn đã sắp xếp</span>
+        <p class="duel-caption">Tấm bảng gỗ có khe trượt — Top 10 luôn nằm sẵn trên đầu, O(log N).</p>
+        <div class="pile" id="redisBoard"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="wrap">
+    <div class="fig-label">Fig. 2 — Bản vẽ kỹ thuật</div>
+    <h2>Spring Boot + ZSet: "trượt thẻ trên bảng gỗ"</h2>
+    <p>Không cần <span class="mono">@Cacheable</span>. Lần này dùng thẳng <span class="mono">RedisTemplate</span> để thao tác trực tiếp lên khe trượt. Hai dòng được tô sáng chính là toàn bộ "phép màu".</p>
+    <div class="code-panel frame">
+      <pre class="code-block"><code><span class="tok-dim">import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.stereotype.Service;
+
+import java.util.Set;</span>
+
+<span class="tok-anno">@Service</span>
+<span class="tok-kw">public</span> <span class="tok-kw">class</span> <span class="tok-type">LeaderboardService</span> {
+
+    <span class="tok-kw">private</span> <span class="tok-kw">final</span> <span class="tok-type">RedisTemplate</span>&lt;<span class="tok-type">String</span>, <span class="tok-type">String</span>&gt; redisTemplate;
+
+    <span class="tok-kw">public</span> <span class="tok-type">LeaderboardService</span>(<span class="tok-type">RedisTemplate</span>&lt;<span class="tok-type">String</span>, <span class="tok-type">String</span>&gt; redisTemplate) {
+        <span class="tok-kw">this</span>.redisTemplate = redisTemplate;
+    }
+
+    <span class="tok-comment">// 1. Hành động: Cập nhật điểm của người chơi</span>
+    <span class="tok-kw">public</span> <span class="tok-kw">void</span> addScore(<span class="tok-type">String</span> playerName, <span class="tok-kw">double</span> score) {
+        <span class="tok-comment">// Nếu playerName đã có, ZSet tự cộng/trừ điểm và tự trượt lên/xuống.</span>
+        redisTemplate.opsForZSet().<span class="tok-fn">add</span>(<span class="tok-str">"game_leaderboard"</span>, playerName, score);
+    }
+
+    <span class="tok-comment">// 2. Hành động: Lấy Top 10 — gần như không tốn thời gian</span>
+    <span class="tok-kw">public</span> <span class="tok-type">Set</span>&lt;<span class="tok-type">ZSetOperations</span>.<span class="tok-type">TypedTuple</span>&lt;<span class="tok-type">String</span>&gt;&gt; getTop10() {
+        <span class="tok-comment">// reverseRangeWithScores: cao xuống thấp, vị trí 0 đến 9</span>
+        <span class="tok-kw">return</span> redisTemplate.opsForZSet()
+            .<span class="tok-fn">reverseRangeWithScores</span>(<span class="tok-str">"game_leaderboard"</span>, 0, 9);
+    }
+}</code></pre>
+    </div>
+    <p>Bài toán từng làm MySQL bốc khói giờ chỉ còn là một lệnh gọi hàm. Không <span class="mono">ORDER BY</span>, không quét bảng — dữ liệu vốn đã nằm đúng chỗ của nó.</p>
+  </div>
+</section>
+
+<section id="mech">
+  <div class="wrap">
+    <div class="fig-label">Fig. 3–5 — Những dụng cụ khác trong xưởng</div>
+    <h2>Không phải bài toán nào cũng cần bảng xếp hạng</h2>
+    <p>ZSet chỉ là một dụng cụ. Redis còn có những hình dáng khác, mỗi cái giải một nỗi đau rất cụ thể. Bấm thử.</p>
+
+    <div class="mech-grid">
+      <div class="mech-card frame">
+        <div class="fig-label">List</div>
+        <h3>Ống nước một chiều</h3>
+        <p>Nhét việc vào một đầu, rút ra xử lý ở đầu kia — hàng đợi gửi email dần dần, không dồn ứ cùng lúc.</p>
+        <div class="pipe-wrap">
+          <button id="lpushBtn" class="btn-mini mono">LPUSH</button>
+          <div class="pipe" id="pipe"></div>
+          <button id="rpopBtn" class="btn-mini mono">RPOP</button>
+        </div>
+        <p class="mech-stat" id="pipeStat">Hàng đợi: 0 email</p>
+      </div>
+
+      <div class="mech-card frame">
+        <div class="fig-label">Set</div>
+        <h3>Rổ kỳ diệu, ghét trùng lặp</h3>
+        <p>Ném bao nhiêu quả bóng cũng được. Ném trúng màu đã có sẵn — nó tự văng ra. Đếm người dùng duy nhất mỗi ngày, khỏi cần lo trùng.</p>
+        <div class="swatches">
+          <button class="swatch" style="--c:#FFB454" data-color="amber" data-hex="#FFB454" aria-label="Ném bóng vàng"></button>
+          <button class="swatch" style="--c:#6FE3FF" data-color="cyan" data-hex="#6FE3FF" aria-label="Ném bóng xanh dương"></button>
+          <button class="swatch" style="--c:#6FE3A0" data-color="mint" data-hex="#6FE3A0" aria-label="Ném bóng xanh lá"></button>
+          <button class="swatch" style="--c:#FF8A80" data-color="coral" data-hex="#FF8A80" aria-label="Ném bóng cam"></button>
+          <button class="swatch" style="--c:#C9A6FF" data-color="violet" data-hex="#C9A6FF" aria-label="Ném bóng tím"></button>
+          <button class="swatch" style="--c:#FFD166" data-color="gold" data-hex="#FFD166" aria-label="Ném bóng vàng đậm"></button>
+        </div>
+        <div class="basket-stage">
+          <div class="basket" id="basket"></div>
+        </div>
+        <p class="mech-stat" id="basketStat">Người dùng duy nhất hôm nay: 0</p>
+      </div>
+
+      <div class="mech-card frame">
+        <div class="fig-label">Hash</div>
+        <h3>Tủ ngăn kéo, sửa 1 ngăn thôi</h3>
+        <p>Không cần viết lại cả chuỗi JSON dài. Mở đúng ngăn cần sửa — các ngăn khác không suy suyển.</p>
+        <div class="cabinet">
+          <div class="drawer">
+            <div class="drawer-front"><span class="d-label">Tên</span><span class="d-value">Rồng Lửa Cận</span></div>
+            <div class="drawer-inner"><input value="Rồng Lửa Cận"></div>
+          </div>
+          <div class="drawer">
+            <div class="drawer-front"><span class="d-label">Tuổi</span><span class="d-value">27</span></div>
+            <div class="drawer-inner"><input value="27"></div>
+          </div>
+          <div class="drawer">
+            <div class="drawer-front"><span class="d-label">Email</span><span class="d-value">rong.lua@game.vn</span></div>
+            <div class="drawer-inner"><input value="rong.lua@game.vn"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="next">
+  <div class="wrap">
+    <div class="teaser frame">
+      <div class="fig-label">Fig. 6 — Bài toán kế tiếp</div>
+      <h2>1.000 người cùng bấm "Mua" trong 1 mili-giây</h2>
+      <p>Chỉ có đúng <strong>1 vé concert BlackPink</strong>. Mỗi người lại chạy trên một server Spring Boot khác nhau. Làm sao đảm bảo đúng 1 người mua được, không "bán lố"?</p>
+      <p class="hint mono">Gợi ý: Redis chạy đơn luồng — như cửa hàng chỉ có một cô thu ngân, ai cũng phải xếp hàng. Hẹn gặp ở Phần 3: Distributed Lock.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap">
+  <p>Minh hoạ tương tác cho giáo án Redis Phong Cách Feynman — Phần 2.</p>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  var players = [
+    { id: 'p1', name: 'Chim Cánh Cụt Xanh', score: 820 },
+    { id: 'p2', name: 'Vua Nhảy Ống', score: 760 },
+    { id: 'p3', name: 'Sói Đêm Trắng', score: 690 },
+    { id: 'p4', name: 'Rồng Lửa Cận', score: 940 },
+    { id: 'p5', name: 'Ninja Ống Nước', score: 410 },
+    { id: 'p6', name: 'Ong Vàng Bay Đêm', score: 1020 },
+    { id: 'p7', name: 'Cáo Lười Biếng', score: 530 },
+    { id: 'p8', name: 'Én Bạc Tốc Độ', score: 1180 },
+    { id: 'p9', name: 'Mèo Máy Số 9', score: 275 },
+    { id: 'p10', name: 'Gà Con Kiên Cường', score: 640 },
+    { id: 'p11', name: 'Bọ Cạp Tím', score: 190 },
+    { id: 'p12', name: 'Thỏ Trắng Mất Ngủ', score: 355 },
+    { id: 'p13', name: 'Kền Kền Cô Đơn', score: 80 },
+    { id: 'p14', name: 'Sếu Đầu Đỏ', score: 470 }
+  ];
+
+  var mysqlSorted = false;
+  var mysqlSortCount = 0;
+  var redisUpdateCount = 0;
+
+  function fmt(n) { return n.toLocaleString('vi-VN'); }
+
+  function toggleDirtyBadge(isDirty) {
+    var badge = document.getElementById('dirtyBadge');
+    if (isDirty) {
+      badge.textContent = 'Chưa sắp xếp';
+      badge.className = 'status-chip dirty';
+    } else {
+      badge.textContent = 'Đã sắp xếp (tạm thời)';
+      badge.className = 'status-chip sorted';
+    }
+  }
+
+  function flashUpdated(id, containerId) {
+    var el = document.querySelector('#' + containerId + ' [data-id="' + id + '"]');
+    if (!el) return;
+    el.classList.remove('pulse');
+    void el.offsetWidth;
+    el.classList.add('pulse');
+  }
+
+  function renderRedisBoard(animate) {
+    var board = document.getElementById('redisBoard');
+    var sorted = players.slice().sort(function (a, b) { return b.score - a.score; });
+    var maxScore = sorted[0].score;
+
+    var firstRects = {};
+    if (animate) {
+      Array.prototype.forEach.call(board.children, function (el) {
+        if (el.dataset && el.dataset.id) firstRects[el.dataset.id] = el.getBoundingClientRect();
+      });
+    }
+
+    board.innerHTML = '';
+    sorted.forEach(function (p, i) {
+      if (i === 10) {
+        var divider = document.createElement('div');
+        divider.className = 'cutoff';
+        divider.textContent = 'NGOÀI TOP 10';
+        board.appendChild(divider);
+      }
+      var row = document.createElement('div');
+      row.className = 'slot' + (i < 10 ? ' top10' : ' overflow');
+      row.dataset.id = p.id;
+      row.innerHTML =
+        '<span class="rank">' + (i + 1) + '</span>' +
+        '<span class="pname">' + escapeHtml(p.name) + '</span>' +
+        '<span class="bar-track"><span class="bar-fill" style="width:' + Math.round(p.score / maxScore * 100) + '%"></span></span>' +
+        '<span class="pscore">' + fmt(p.score) + '</span>';
+      board.appendChild(row);
+    });
+
+    if (animate) {
+      requestAnimationFrame(function () {
+        Array.prototype.forEach.call(board.children, function (el) {
+          if (!el.dataset || !el.dataset.id) return;
+          var first = firstRects[el.dataset.id];
+          if (!first) { el.classList.add('enter'); return; }
+          var last = el.getBoundingClientRect();
+          var dy = first.top - last.top;
+          if (Math.abs(dy) > 0.5) {
+            el.style.transition = 'transform 0s';
+            el.style.transform = 'translateY(' + dy + 'px)';
+            requestAnimationFrame(function () {
+              el.style.transition = 'transform .5s cubic-bezier(.22,.85,.35,1)';
+              el.style.transform = '';
+            });
+          }
+        });
+      });
+    }
+  }
+
+  function renderMysqlPanel() {
+    var pile = document.getElementById('mysqlPile');
+    var list = mysqlSorted ? players.slice().sort(function (a, b) { return b.score - a.score; }) : players;
+    pile.innerHTML = '';
+    list.forEach(function (p, i) {
+      var card = document.createElement('div');
+      card.className = 'card' + (mysqlSorted && i < 10 ? ' top10' : '') + (mysqlSorted && i >= 10 ? ' overflow' : '');
+      card.dataset.id = p.id;
+      var rankHtml = mysqlSorted ? '<span class="rank">' + (i + 1) + '</span>' : '<span class="rank dash">—</span>';
+      card.innerHTML = rankHtml +
+        '<span class="pname">' + escapeHtml(p.name) + '</span>' +
+        '<span class="pscore">' + fmt(p.score) + '</span>';
+      pile.appendChild(card);
+    });
+  }
+
+  function bumpRandomScore() {
+    var p = players[Math.floor(Math.random() * players.length)];
+    var delta = 40 + Math.floor(Math.random() * 260);
+    p.score += delta;
+
+    redisUpdateCount++;
+    document.getElementById('redisStat').textContent = 'Tự trượt: ' + redisUpdateCount + ' lần';
+    renderRedisBoard(true);
+    flashUpdated(p.id, 'redisBoard');
+
+    if (mysqlSorted) {
+      mysqlSorted = false;
+      toggleDirtyBadge(true);
+    } else {
+      toggleDirtyBadge(true);
+    }
+    renderMysqlPanel();
+    flashUpdated(p.id, 'mysqlPile');
+  }
+
+  function runSort() {
+    var scanner = document.getElementById('scanner');
+    var fill = document.getElementById('scannerFill');
+    var text = document.getElementById('scannerText');
+    var sortBtn = document.getElementById('sortBtn');
+    var crowd = document.getElementById('crowdToggle').checked;
+    var totalRows = 1000000;
+    var duration = crowd ? 2200 : 900;
+
+    scanner.hidden = false;
+    sortBtn.disabled = true;
+    fill.style.width = '0%';
+    var start = null;
+
+    function step(ts) {
+      if (!start) start = ts;
+      var progress = Math.min(1, (ts - start) / duration);
+      fill.style.width = (progress * 100) + '%';
+      var scannedRows = Math.floor(progress * totalRows);
+      if (crowd) {
+        text.textContent = '1.000 người × quét ' + fmt(scannedRows) + ' dòng = ' + fmt(scannedRows * 1000) + ' phép so sánh...';
+      } else {
+        text.textContent = 'Đang quét & so sánh ' + fmt(scannedRows) + ' / 1.000.000 dòng...';
+      }
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      } else {
+        finishSort();
+      }
+    }
+    requestAnimationFrame(step);
+
+    function finishSort() {
+      mysqlSorted = true;
+      mysqlSortCount++;
+      document.getElementById('mysqlStat').textContent = 'Đã sắp xếp lại: ' + mysqlSortCount + ' lần';
+      renderMysqlPanel();
+      toggleDirtyBadge(false);
+      scanner.hidden = true;
+      sortBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('scoreBtn').addEventListener('click', bumpRandomScore);
+  document.getElementById('sortBtn').addEventListener('click', runSort);
+
+  renderRedisBoard(false);
+  renderMysqlPanel();
+
+  /* ---------- List / pipe ---------- */
+  var pipeItems = [];
+  var pipeCounter = 0;
+
+  function updatePipeStat() {
+    document.getElementById('pipeStat').textContent = 'Hàng đợi: ' + pipeItems.length + ' email';
+  }
+
+  function lpush() {
+    pipeCounter++;
+    var id = 'env' + pipeCounter;
+    var el = document.createElement('div');
+    el.className = 'envelope entering';
+    el.dataset.id = id;
+    var pipe = document.getElementById('pipe');
+    pipe.insertBefore(el, pipe.firstChild);
+    requestAnimationFrame(function () { el.classList.remove('entering'); });
+    pipeItems.push(id);
+    updatePipeStat();
+  }
+
+  function rpop() {
+    var pipe = document.getElementById('pipe');
+    var last = pipe.lastElementChild;
+    if (!last) return;
+    last.classList.add('leaving');
+    setTimeout(function () { if (last.parentNode) last.parentNode.removeChild(last); }, 400);
+    pipeItems.pop();
+    updatePipeStat();
+  }
+
+  document.getElementById('lpushBtn').addEventListener('click', lpush);
+  document.getElementById('rpopBtn').addEventListener('click', rpop);
+  lpush(); lpush(); lpush();
+
+  /* ---------- Set / basket ---------- */
+  var basketColors = {};
+  var toastTimer = null;
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1600);
+  }
+
+  function throwBall(color, hex) {
+    var basket = document.getElementById('basket');
+    var stage = document.getElementById('basket').parentElement;
+    if (basketColors[color]) {
+      var reject = document.createElement('div');
+      reject.className = 'ball reject';
+      reject.style.setProperty('--c', hex);
+      stage.appendChild(reject);
+      requestAnimationFrame(function () { reject.classList.add('bounce'); });
+      setTimeout(function () { if (reject.parentNode) reject.parentNode.removeChild(reject); }, 650);
+      showToast('Trùng màu — bị văng ra khỏi rổ!');
+      return;
+    }
+    var ball = document.createElement('div');
+    ball.className = 'ball drop';
+    ball.style.setProperty('--c', hex);
+    basket.appendChild(ball);
+    requestAnimationFrame(function () { ball.classList.remove('drop'); });
+    basketColors[color] = true;
+    document.getElementById('basketStat').textContent = 'Người dùng duy nhất hôm nay: ' + Object.keys(basketColors).length;
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.swatch'), function (btn) {
+    btn.addEventListener('click', function () {
+      throwBall(btn.dataset.color, btn.dataset.hex);
+    });
+  });
+
+  /* ---------- Hash / drawers ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.drawer'), function (drawer) {
+    var front = drawer.querySelector('.drawer-front');
+    var valueEl = drawer.querySelector('.d-value');
+    var input = drawer.querySelector('.drawer-inner input');
+
+    front.addEventListener('click', function () {
+      var isOpen = drawer.classList.toggle('open');
+      if (isOpen) {
+        input.value = valueEl.textContent;
+        requestAnimationFrame(function () { input.focus(); });
+      }
+    });
+
+    function commit() {
+      if (input.value.trim()) valueEl.textContent = input.value.trim();
+      drawer.classList.remove('open');
+      valueEl.classList.remove('pulse');
+      void valueEl.offsetWidth;
+      valueEl.classList.add('pulse');
+    }
+
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') commit(); });
+    input.addEventListener('blur', commit);
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+  });
+})();
+</script>
