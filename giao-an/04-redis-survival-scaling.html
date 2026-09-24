@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Redis phần 4: Persistence & Scaling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&family=Patrick+Hand&family=JetBrains+Mono:wght@400;600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+:root{
+  --board:#F6F8FA; --ink:#1C2230; --muted:#5B6474; --line:#D5DBE3;
+  --blue:#1E5BD8; --red:#D33A2C; --green:#1F8A5B; --amber:#B7791F;
+  --panel:#FFFFFF; --tray:#E9EDF2;
+  --hand:"Patrick Hand","Comic Sans MS",cursive;
+  --sans:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --board:#1E2A25; --ink:#EEF2EC; --muted:#A9B5AE; --line:#3A4A43;
+    --blue:#7FB0FF; --red:#FF8A7A; --green:#6FD6A0; --amber:#F2C66D;
+    --panel:#24322C; --tray:#2B3A33;
+  }
+}
+:root[data-theme="dark"]{
+  --board:#1E2A25; --ink:#EEF2EC; --muted:#A9B5AE; --line:#3A4A43;
+  --blue:#7FB0FF; --red:#FF8A7A; --green:#6FD6A0; --amber:#F2C66D;
+  --panel:#24322C; --tray:#2B3A33;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--board);color:var(--ink);font:16px/1.65 var(--sans);-webkit-font-smoothing:antialiased}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1,h2,h3{font-family:var(--hand);font-weight:400;line-height:1.15;margin:0}
+h1{font-size:clamp(40px,7vw,68px)}
+h2{font-size:clamp(30px,4.5vw,42px);margin-bottom:6px}
+h3{font-size:24px}
+p{margin:.5em 0;max-width:68ch}
+code,.mono{font-family:var(--mono);font-size:.88em}
+section{padding:56px 0 8px;border-top:2px dashed var(--line)}
+.lead{color:var(--muted);font-size:18px}
+.step{font-family:var(--hand);color:var(--blue);font-size:22px}
+button{font:500 15px var(--sans);color:var(--ink);background:var(--panel);border:2px solid var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+button.danger{border-color:var(--red);color:var(--red);box-shadow:3px 3px 0 var(--red)}
+button.go{border-color:var(--green);color:var(--green);box-shadow:3px 3px 0 var(--green)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.note{border-left:4px solid var(--amber);padding:8px 14px;margin:18px 0;background:var(--tray);border-radius:0 8px 8px 0}
+.note b{color:var(--amber)}
+.pain{color:var(--red)}
+.good{color:var(--green)}
+pre{background:var(--tray);border-radius:8px;padding:12px 14px;overflow-x:auto;font:13px/1.55 var(--mono);margin:12px 0}
+
+/* HERO */
+.hero{padding:24px 0 40px}
+.whiteboard{position:relative;margin-top:22px;border:10px solid #9AA4B1;border-radius:6px;background:var(--panel);min-height:260px;padding:22px 26px;overflow:hidden;box-shadow:0 12px 0 -4px #7C8795}
+.whiteboard .tray{position:absolute;left:0;right:0;bottom:0;height:8px;background:#9AA4B1}
+.wb-line{font:26px/1.5 var(--hand);transition:opacity .5s,filter .5s,transform .5s}
+.wb-line span{color:var(--muted);font-size:20px}
+.whiteboard.off .wb-line{opacity:0;filter:blur(6px);transform:translateY(-8px)}
+.plug{position:absolute;right:18px;top:16px;font:18px var(--hand);color:var(--muted)}
+.blackout{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .15s;display:grid;place-items:center;color:#fff;font:30px var(--hand)}
+.whiteboard.off .blackout{opacity:.88}
+
+/* PERSISTENCE SIM */
+.sim{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:760px){.sim{grid-template-columns:1fr}}
+.box{background:var(--panel);border:2px solid var(--ink);border-radius:12px;padding:12px 14px;min-height:220px;position:relative}
+.box h3{font-size:22px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.box .tag{font:13px var(--sans);color:var(--muted)}
+.box.dead{background:repeating-linear-gradient(45deg,var(--tray) 0 8px,var(--panel) 8px 16px)}
+.kv{font:14px/1.7 var(--mono);display:flex;justify-content:space-between;border-bottom:1px dotted var(--line)}
+.kv.new{animation:pop .5s}
+.kv.lost{color:var(--red);text-decoration:line-through}
+@keyframes pop{from{background:var(--amber);color:#000}to{background:transparent}}
+.log{font:12.5px/1.6 var(--mono);max-height:190px;overflow:auto}
+.log div.replay{color:var(--green);font-weight:600}
+.clock{font:20px var(--hand);color:var(--blue)}
+.verdict{margin-top:10px;font:20px var(--hand)}
+.photo{border:2px solid var(--ink);border-radius:4px;padding:6px 8px;background:var(--tray);transform:rotate(-1.5deg);margin-top:4px}
+.photo.flash{animation:flash .5s}
+@keyframes flash{0%{background:#fff;box-shadow:0 0 40px #fff}100%{background:var(--tray)}}
+
+/* REWRITE */
+.rewrite{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center}
+@media (max-width:640px){.rewrite{grid-template-columns:1fr}.rewrite .arrow{transform:rotate(90deg);justify-self:center}}
+.rewrite .log{max-height:none}
+.arrow{font:44px var(--hand);color:var(--blue)}
+.fade{opacity:.25;text-decoration:line-through}
+
+/* STAGE (replication / sentinel) */
+.stage{position:relative;background:var(--panel);border:2px solid var(--ink);border-radius:14px;height:380px;overflow:hidden;margin-top:10px}
+.node{position:absolute;transform:translate(-50%,-50%);text-align:center;width:120px}
+.node .face{width:78px;height:78px;margin:0 auto;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font-size:36px;background:var(--tray);transition:background .3s,border-color .3s,transform .3s}
+.node .name{font:19px/1.2 var(--hand);margin-top:4px}
+.node .sub{font:12px var(--mono);color:var(--muted)}
+.node.master .face{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 18%,var(--panel))}
+.node.down .face{border-color:var(--red);background:color-mix(in srgb,var(--red) 22%,var(--panel));transform:rotate(90deg)}
+.node.busy .face{transform:scale(1.12)}
+.node.sentinel .face{width:54px;height:54px;font-size:26px;border-style:dashed}
+.node.sentinel.vote .face{border-color:var(--amber);border-style:solid;background:color-mix(in srgb,var(--amber) 25%,var(--panel))}
+.packet{position:absolute;width:16px;height:16px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:5}
+.packet.w{background:var(--blue)}
+.packet.r{background:var(--green)}
+.stage svg{position:absolute;inset:0;width:100%;height:100%}
+.stage svg line{stroke:var(--line);stroke-width:2;stroke-dasharray:6 6}
+.stats{display:flex;gap:18px;flex-wrap:wrap;font:18px var(--hand);margin-top:8px}
+.stats b{font-family:var(--mono);font-size:15px}
+.timeline{list-style:none;padding:0;margin:12px 0;counter-reset:s}
+.timeline li{counter-increment:s;padding:6px 0 6px 38px;position:relative;color:var(--muted);transition:color .3s}
+.timeline li::before{content:counter(s);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font:600 13px var(--sans)}
+.timeline li.on{color:var(--ink)}
+.timeline li.on::before{border-color:var(--green);background:var(--green);color:var(--panel)}
+
+/* CLUSTER */
+.slotbar{position:relative;display:flex;height:54px;border:2px solid var(--ink);border-radius:10px;overflow:hidden;margin:18px 0 6px}
+.slotbar div{flex:1;display:grid;place-items:center;font:18px var(--hand);border-right:2px solid var(--ink);transition:background .3s}
+.slotbar div:last-child{border-right:0}
+.slotbar div.hit{background:color-mix(in srgb,var(--green) 30%,var(--panel))}
+.pin{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--red);transition:left .5s cubic-bezier(.3,1.4,.5,1)}
+.pin::after{content:"▼";position:absolute;top:-22px;left:-7px;color:var(--red);font-size:14px}
+.ticks{display:flex;justify-content:space-between;font:12px var(--mono);color:var(--muted)}
+.keyin{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.keyin input{font:16px var(--mono);padding:9px 12px;border:2px solid var(--ink);border-radius:10px;background:var(--panel);color:var(--ink);min-width:0;flex:1 1 220px}
+.calc{font:14px/1.9 var(--mono);background:var(--tray);border-radius:8px;padding:10px 14px;margin-top:10px;overflow-x:auto}
+.calc .big{font-size:18px;color:var(--green);font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chips button{padding:4px 10px;font:13px var(--mono);box-shadow:2px 2px 0 var(--ink)}
+
+/* SUMMARY */
+.recap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:14px}
+.recap div{border:2px solid var(--ink);border-radius:12px;padding:14px;background:var(--panel)}
+.recap .ico{font-size:34px}
+.recap h3{margin:6px 0 4px}
+.recap p{font-size:14.5px;color:var(--muted);margin:0}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+.tablewrap{overflow-x:auto;margin-top:12px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--tray);font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <div class="step">Giáo án Redis kiểu Feynman · Phần 4</div>
+  <h1>Sự sinh tồn và đội quân nhân bản</h1>
+  <p class="lead">Redis chạy trên RAM, mà RAM mất điện là mất sạch. Thử rút phích cắm chiếc bảng trắng dưới đây xem điều gì xảy ra.</p>
+  <div class="whiteboard" id="wb">
+    <div class="plug">🔌 đang có điện</div>
+    <div class="wb-line">lock:ticket:A12 = server-3 <span>(khóa phân tán)</span></div>
+    <div class="wb-line">leaderboard: Harry 100 · Hermione 98 <span>(Sorted Set)</span></div>
+    <div class="wb-line">cache:product:88 = {...} <span>(bộ nhớ đệm)</span></div>
+    <div class="blackout">Mất điện. Bảng trắng trơn.</div>
+    <div class="tray"></div>
+  </div>
+  <div class="controls">
+    <button class="danger" id="unplug">Rút phích điện</button>
+    <button id="replug" disabled>Cắm điện lại</button>
+  </div>
+  <p id="heroMsg" class="pain" hidden>Cắm điện lại cũng vô ích: RAM không nhớ gì cả. Muốn "bất tử", Redis phải ghi xuống ổ cứng. Có hai cách, xem ngay bên dưới.</p>
+</header>
+
+<section id="persist">
+  <div class="step">Thuốc giải 1 và 2</div>
+  <h2>📷 Máy ảnh (RDB) và 📓 Sổ nhật ký (AOF)</h2>
+  <p>Cùng một bảng trắng, hai chiến lược sao lưu chạy song song. Hãy viết vài dòng, chụp ảnh, viết thêm, rồi cúp điện. Sau đó so sánh hai bên khôi phục được bao nhiêu.</p>
+
+  <div class="controls">
+    <button id="bWrite">✍️ Viết 1 dòng</button>
+    <button id="bSnap">📷 Chụp ảnh RDB</button>
+    <button class="danger" id="bCut">⚡ Cúp điện</button>
+    <button class="go" id="bRestore" disabled>🔌 Có điện lại</button>
+    <button id="bReset">Làm lại</button>
+  </div>
+  <div class="clock" id="clock">12:00</div>
+
+  <div class="sim">
+    <div class="box" id="ramBox">
+      <h3>🧠 RAM <span class="tag">bảng trắng</span></h3>
+      <div id="ram"></div>
+    </div>
+    <div class="box">
+      <h3>📷 RDB <span class="tag">dump.rdb</span></h3>
+      <div id="rdb"><p class="tag">Chưa có ảnh nào.</p></div>
+      <div class="verdict" id="vRdb"></div>
+    </div>
+    <div class="box">
+      <h3>📓 AOF <span class="tag">appendonly.aof</span></h3>
+      <div class="log" id="aof"></div>
+      <div class="verdict" id="vAof"></div>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+  <table>
+    <tr><th></th><th>📷 RDB</th><th>📓 AOF</th></tr>
+    <tr><td>Cách làm</td><td>Chụp toàn bộ RAM theo chu kỳ (fork process con, ghi file nhị phân)</td><td>Ghi thêm từng lệnh write vào cuối file</td></tr>
+    <tr><td>Mất dữ liệu tối đa</td><td class="pain">Mọi thứ sau lần chụp gần nhất (vài phút)</td><td class="good">~1 giây với <code>appendfsync everysec</code></td></tr>
+    <tr><td>Kích thước file</td><td class="good">Nhỏ, nén chặt</td><td class="pain">Lớn dần theo thời gian</td></tr>
+    <tr><td>Tốc độ khởi động lại</td><td class="good">Nhanh: load thẳng ảnh</td><td class="pain">Chậm: chạy lại từng lệnh</td></tr>
+  </table>
+  </div>
+
+<pre># redis.conf
+save 300 10              # RDB: chụp nếu sau 300s có ≥ 10 thay đổi
+appendonly yes           # bật AOF
+appendfsync everysec     # fsync mỗi giây: mất tối đa ~1s dữ liệu
+                         # always = an toàn nhất nhưng chậm, no = để OS tự flush</pre>
+
+  <div class="note"><b>Feynman đính chính:</b> AOF không hẳn "không mất byte nào". Với <code>everysec</code> (mặc định), nếu server sập, bạn có thể mất tối đa khoảng 1 giây ghi cuối. Chỉ <code>appendfsync always</code> mới gần như không mất gì, và cái giá là mỗi lệnh write phải chờ đĩa.</div>
+
+  <h3 style="margin-top:34px">Nén cuốn sổ nhật ký: AOF rewrite</h3>
+  <p>Cuốn sổ ghi <code>INCR</code> điểm Harry 5 lần, nhưng thứ ta cần chỉ là con số cuối cùng. Redis viết lại sổ từ trạng thái hiện tại trong RAM (<code>BGREWRITEAOF</code>). Từ Redis 4, phần đầu sổ mới được ghi dưới dạng ảnh RDB (<code>aof-use-rdb-preamble yes</code>), phần sau mới là các lệnh mới. Đây chính là cách kết hợp máy ảnh với nhật ký.</p>
+  <div class="rewrite">
+    <div class="box"><h3>Sổ cũ <span class="tag" id="oldCount">8 dòng</span></h3><div class="log" id="oldLog"></div></div>
+    <div class="arrow">⟶</div>
+    <div class="box"><h3>Sổ mới <span class="tag" id="newCount">chưa nén</span></h3><div class="log" id="newLog"><p class="tag">Bấm nút để nén.</p></div></div>
+  </div>
+  <div class="controls"><button id="bRewrite">🗜️ BGREWRITEAOF</button></div>
+</section>
+
+<section id="repl">
+  <div class="step">Thuốc giải 3</div>
+  <h2>👯 Đội quân chép phạt (Replication)</h2>
+  <p>Chỉ <b>Master</b> được viết. Mỗi lệnh ghi được gửi sang 3 <b>Replica</b> để chép lại. Lệnh đọc được chia đều cho các replica, nên Master rảnh tay lo việc ghi.</p>
+  <div class="controls">
+    <button id="rWrite">✍️ Gửi 1 lệnh GHI</button>
+    <button class="go" id="rRead">👀 Gửi 10 lệnh ĐỌC</button>
+    <button id="rFlood">🌊 1 triệu người ùa vào</button>
+  </div>
+  <div class="stage" id="rStage">
+    <svg id="rLines"></svg>
+    <div class="node" data-id="client" style="left:12%;top:50%"><div class="face">🧑‍💻</div><div class="name">Client</div></div>
+    <div class="node master" data-id="m" style="left:48%;top:22%"><div class="face">👩‍🏫</div><div class="name">Master</div><div class="sub" id="rM">ghi: 0</div></div>
+    <div class="node" data-id="r1" style="left:32%;top:76%"><div class="face">🧑‍🎓</div><div class="name">Replica 1</div><div class="sub" id="r1c">đọc: 0</div></div>
+    <div class="node" data-id="r2" style="left:58%;top:76%"><div class="face">🧑‍🎓</div><div class="name">Replica 2</div><div class="sub" id="r2c">đọc: 0</div></div>
+    <div class="node" data-id="r3" style="left:84%;top:76%"><div class="face">🧑‍🎓</div><div class="name">Replica 3</div><div class="sub" id="r3c">đọc: 0</div></div>
+  </div>
+  <div class="stats"><span>🔵 lệnh ghi</span><span>🟢 lệnh đọc</span><span>Tổng đọc: <b id="rTotal">0</b></span></div>
+  <div class="note"><b>Feynman đính chính:</b> Replication trong Redis là <b>bất đồng bộ</b>. Master trả "OK" cho client trước, rồi mới gửi sang replica. Nghĩa là có một khoảng rất ngắn replica còn dữ liệu cũ (<i>stale read</i>). Với dữ liệu bắt buộc phải mới nhất, ví dụ số tồn kho lúc thanh toán, hãy đọc từ Master. Lệnh <code>WAIT</code> có thể giúp chờ replica xác nhận, nhưng vẫn không biến Redis thành hệ thống strong consistency.</div>
+<pre># Trên replica
+replicaof 10.0.0.1 6379
+replica-read-only yes</pre>
+</section>
+
+<section id="sentinel">
+  <div class="step">Thuốc giải 4a</div>
+  <h2>💂 Anh lính gác (Sentinel)</h2>
+  <p>Ba anh lính gác cùng canh Master. Một anh nghi Master ngất thì chưa đủ. Phải đủ <b>quorum</b> (ở đây là 2/3) đồng ý thì mới thổi còi. Đây là cách tránh báo động nhầm khi chỉ một anh bị đứt mạng.</p>
+  <div class="controls">
+    <button class="danger" id="sKill">💥 Master ngất xỉu</button>
+    <button id="sBack" disabled>🩹 Master cũ tỉnh lại</button>
+    <button id="sReset">Làm lại</button>
+  </div>
+  <div class="stage" id="sStage" style="height:360px">
+    <div class="node sentinel" data-s="0" style="left:20%;top:17%"><div class="face">👁️</div><div class="name">Sentinel A</div></div>
+    <div class="node sentinel" data-s="1" style="left:50%;top:13%"><div class="face">👁️</div><div class="name">Sentinel B</div></div>
+    <div class="node sentinel" data-s="2" style="left:80%;top:17%"><div class="face">👁️</div><div class="name">Sentinel C</div></div>
+    <div class="node master" data-n="0" style="left:22%;top:68%"><div class="face">👩‍🏫</div><div class="name" id="n0">Master</div><div class="sub">offset 1000</div></div>
+    <div class="node" data-n="1" style="left:50%;top:68%"><div class="face">🧑‍🎓</div><div class="name" id="n1">Replica 1</div><div class="sub">offset 998</div></div>
+    <div class="node" data-n="2" style="left:78%;top:68%"><div class="face">🧑‍🎓</div><div class="name" id="n2">Replica 2</div><div class="sub">offset 940</div></div>
+  </div>
+  <ol class="timeline" id="sTimeline">
+    <li><b>SDOWN:</b> Sentinel A ping Master không thấy trả lời sau <code>down-after-milliseconds</code>, nó <i>chủ quan</i> cho là Master sập.</li>
+    <li><b>ODOWN:</b> A hỏi B và C. Đủ 2/3 đồng ý, Master chính thức <i>khách quan</i> được xem là sập.</li>
+    <li><b>Bầu leader:</b> các Sentinel bầu ra một anh chỉ huy việc failover.</li>
+    <li><b>Chọn Master mới:</b> ưu tiên replica có dữ liệu mới nhất (offset lớn nhất). Replica 1 (998) thắng Replica 2 (940).</li>
+    <li><b>Chuyển giao:</b> Replica 2 quay sang chép từ Master mới. Client hỏi Sentinel để lấy địa chỉ Master mới.</li>
+    <li><b>Master cũ tỉnh lại:</b> nó bị giáng cấp thành Replica, không được giành lại ngôi.</li>
+  </ol>
+</section>
+
+<section id="cluster">
+  <div class="step">Thuốc giải 4b</div>
+  <h2>🧩 Chia để trị (Cluster)</h2>
+  <p>Bài giảng gốc ví von "bảng 1 lưu A–C, bảng 2 lưu D–F". Thực tế Redis không chia theo chữ cái, vì chia như vậy thì bảng chứa chữ "T" (tên người Việt!) sẽ quá tải. Redis chia không gian key thành <b>16384 hash slot</b>, và mỗi node giữ một dải slot:</p>
+  <p class="mono" style="text-align:center">slot = CRC16(key) mod 16384</p>
+  <div class="keyin">
+    <input id="key" value="leaderboard:harry" aria-label="Nhập key" spellcheck="false">
+    <button class="go" id="kGo">Tìm slot</button>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="slotbar" id="slotbar">
+    <div data-n="0">Node A</div><div data-n="1">Node B</div><div data-n="2">Node C</div>
+    <span class="pin" id="pin" style="left:0"></span>
+  </div>
+  <div class="ticks"><span>0</span><span>5460 | 5461</span><span>10922 | 10923</span><span>16383</span></div>
+  <div class="calc" id="calc"></div>
+  <div class="note"><b>Hash tag:</b> chỉ phần nằm trong <code>{...}</code> được đem đi băm. Ví dụ <code>{user:42}:cart</code> và <code>{user:42}:profile</code> luôn cùng slot, cùng node, nên dùng được <code>MULTI</code> hay Lua script trên cả hai. Không có hash tag thì các lệnh nhiều key khác slot sẽ bị lỗi <code>CROSSSLOT</code>.</div>
+  <p>Mỗi node trong Cluster thường có replica riêng, và Cluster tự failover mà không cần Sentinel. Khi client hỏi nhầm node, node đó trả về <code>MOVED 12182 10.0.0.3:6379</code> để chỉ đường. Client thông minh sẽ nhớ bản đồ slot cho lần sau.</p>
+</section>
+
+<section id="recap">
+  <div class="step">Tổng kết toàn khóa</div>
+  <h2>Cô thủ thư và bộ đồ nghề</h2>
+  <div class="recap">
+    <div><div class="ico">⚡</div><h3>Caching</h3><p>Bảng trắng siêu tốc đứng trước database chậm chạp.</p></div>
+    <div><div class="ico">🎚️</div><h3>Data Structures</h3><p>Sorted Set sắp xếp hàng triệu phần tử trong O(log N).</p></div>
+    <div><div class="ico">🔑</div><h3>Distributed Lock</h3><p>Một người giữ chìa khóa cho hàng chục server.</p></div>
+    <div><div class="ico">📷📓</div><h3>Persistence</h3><p>RDB chụp ảnh, AOF ghi nhật ký. Dùng cả hai là an toàn nhất.</p></div>
+    <div><div class="ico">👯💂🧩</div><h3>Scaling</h3><p>Replica gánh việc đọc, Sentinel lo failover, Cluster chia dữ liệu.</p></div>
+  </div>
+  <div class="tablewrap">
+  <table style="margin-top:18px">
+    <tr><th>Nỗi đau</th><th>Thuốc giải</th></tr>
+    <tr><td>Mất điện là mất sạch</td><td>RDB + AOF</td></tr>
+    <tr><td>Quá nhiều người đọc</td><td>Replication</td></tr>
+    <tr><td>Master sập, không ai ghi được</td><td>Sentinel (hoặc Cluster tự failover)</td></tr>
+    <tr><td>Dữ liệu to hơn RAM một máy</td><td>Cluster: 16384 slot chia cho nhiều node</td></tr>
+  </table>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* HERO */
+$('#unplug').onclick = () => { $('#wb').classList.add('off'); $('.plug').textContent = '🔌 rút rồi'; $('#unplug').disabled = true; $('#replug').disabled = false; };
+$('#replug').onclick = () => { $('.blackout').textContent = 'Có điện rồi… nhưng bảng vẫn trống.'; $('#wb').querySelector('.blackout').style.background = 'var(--panel)'; $('.blackout').style.color = 'var(--ink)'; $('#replug').disabled = true; $('#heroMsg').hidden = false; $('.plug').textContent = '🔌 đã cắm lại'; };
+
+/* PERSISTENCE */
+const names = ['Harry','Hermione','Ron','Ginny','Neville','Luna','Draco','Cho','Cedric','Fred','George','Snape'];
+let P;
+function pReset(){ P = { t:0, ram:{}, snap:null, snapT:null, aof:[], off:false, i:0 }; renderP(); $('#vRdb').textContent=''; $('#vAof').textContent=''; $('#ramBox').classList.remove('dead'); $('#bRestore').disabled=true; ['#bWrite','#bSnap','#bCut'].forEach(b=>$(b).disabled=false); }
+const fmt = m => `12:${String(m).padStart(2,'0')}`;
+function renderP(newKey){
+  $('#clock').textContent = fmt(P.t);
+  $('#ram').innerHTML = Object.keys(P.ram).length ? Object.entries(P.ram).map(([k,v]) => `<div class="kv${k===newKey?' new':''}"><span>${k}</span><span>${v}</span></div>`).join('') : '<p class="tag">Trống trơn.</p>';
+  $('#rdb').innerHTML = P.snap ? `<div class="photo" id="photo"><div class="tag">Ảnh chụp lúc ${fmt(P.snapT)}</div>${Object.entries(P.snap).map(([k,v])=>`<div class="kv"><span>${k}</span><span>${v}</span></div>`).join('')||'<p class="tag">(bảng trống)</p>'}</div>` : '<p class="tag">Chưa có ảnh nào.</p>';
+  $('#aof').innerHTML = P.aof.length ? P.aof.map(l => `<div>${l}</div>`).join('') : '<p class="tag">Sổ còn trắng.</p>';
+  $('#aof').scrollTop = 1e6;
+}
+$('#bWrite').onclick = () => { P.t++; const n = names[P.i++ % names.length]; const v = 50 + Math.floor(Math.random()*50); P.ram[n] = v; P.aof.push(`${fmt(P.t)} ZADD board ${v} ${n}`); renderP(n); };
+$('#bSnap').onclick = () => { P.snap = {...P.ram}; P.snapT = P.t; renderP(); const ph = $('#photo'); ph.classList.add('flash'); };
+$('#bCut').onclick = () => { P.lostBefore = {...P.ram}; P.ram = {}; $('#ramBox').classList.add('dead'); renderP(); ['#bWrite','#bSnap','#bCut'].forEach(b=>$(b).disabled=true); $('#bRestore').disabled=false; };
+$('#bRestore').onclick = async () => {
+  $('#bRestore').disabled = true; $('#ramBox').classList.remove('dead');
+  const total = Object.keys(P.lostBefore).length;
+  const got = P.snap ? Object.keys(P.snap).length : 0;
+  const lost = Object.keys(P.lostBefore).filter(k => !(P.snap && k in P.snap));
+  $('#vRdb').innerHTML = lost.length ? `<span class="pain">RDB: mất ${lost.length}/${total} dòng</span> (${lost.join(', ')})` : `<span class="good">RDB: đủ ${got}/${total} dòng</span>, vì bạn vừa chụp ảnh ngay trước khi cúp.`;
+  const rows = [...$('#aof').children];
+  for (const r of rows){ r.classList.add('replay'); await sleep(Math.max(60, 500/rows.length)); }
+  P.ram = {...P.lostBefore}; renderP();
+  $('#vAof').innerHTML = `<span class="good">AOF: đọc lại ${P.aof.length} lệnh, khôi phục ${total}/${total}</span>. Chậm hơn vì phải chạy lại từng dòng.`;
+  ['#bWrite','#bSnap','#bCut'].forEach(b=>$(b).disabled=false);
+};
+$('#bReset').onclick = pReset; pReset();
+
+/* AOF REWRITE */
+const oldLines = ['SET harry 0','INCR harry','INCR harry','SET ron 10','INCR harry','DEL ron','INCR harry','INCR harry'];
+$('#oldLog').innerHTML = oldLines.map(l=>`<div>${l}</div>`).join('');
+$('#bRewrite').onclick = async () => {
+  $('#bRewrite').disabled = true;
+  for (const d of $('#oldLog').children){ d.classList.add('fade'); await sleep(120); }
+  $('#newLog').innerHTML = '<div class="tag">[RDB preamble: harry = 5]</div><div>SET harry 5</div>';
+  $('#newCount').textContent = '1 dòng, cùng kết quả';
+};
+
+/* REPLICATION */
+function center(stage, el){ const s = stage.getBoundingClientRect(), f = el.querySelector('.face').getBoundingClientRect(); return [f.left - s.left + f.width/2, f.top - s.top + f.height/2]; }
+function fly(stage, from, to, cls, dur=650){
+  return new Promise(res => {
+    const p = document.createElement('div'); p.className = 'packet ' + cls; stage.appendChild(p);
+    const [x1,y1] = center(stage, from), [x2,y2] = center(stage, to);
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const a = p.animate([{left:x1+'px',top:y1+'px'},{left:x2+'px',top:y2+'px'}], {duration: reduce?1:dur, easing:'ease-in-out'});
+    a.onfinish = () => { p.remove(); to.classList.add('busy'); setTimeout(()=>to.classList.remove('busy'),150); res(); };
+  });
+}
+const rs = $('#rStage'), rn = id => rs.querySelector(`[data-id="${id}"]`);
+function drawLines(){
+  const s = $('#rLines'); const pairs = [['client','m'],['m','r1'],['m','r2'],['m','r3'],['client','r1'],['client','r2'],['client','r3']];
+  s.innerHTML = pairs.map(([a,b]) => { const [x1,y1]=center(rs,rn(a)),[x2,y2]=center(rs,rn(b)); return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; }).join('');
+}
+addEventListener('resize', drawLines); setTimeout(drawLines, 50); document.fonts && document.fonts.ready.then(drawLines);
+let W = 0, R = [0,0,0], rr = 0;
+const upd = () => { $('#rM').textContent = 'ghi: ' + W; R.forEach((v,i)=>$('#r'+(i+1)+'c').textContent='đọc: '+v.toLocaleString('vi-VN')); $('#rTotal').textContent = R.reduce((a,b)=>a+b,0).toLocaleString('vi-VN'); };
+$('#rWrite').onclick = async () => { await fly(rs, rn('client'), rn('m'), 'w'); W++; upd(); await sleep(250); ['r1','r2','r3'].forEach((r,i)=>setTimeout(()=>fly(rs, rn('m'), rn(r), 'w', 500), i*90)); };
+$('#rRead').onclick = () => { for (let i=0;i<10;i++){ const k = rr++ % 3; setTimeout(()=>fly(rs, rn('client'), rn('r'+(k+1)), 'r', 550).then(()=>{R[k]++;upd();}), i*110); } };
+$('#rFlood').onclick = () => { for (let i=0;i<24;i++){ const k=i%3; setTimeout(()=>fly(rs, rn('client'), rn('r'+(k+1)), 'r', 450), i*40); } setTimeout(()=>{ R = R.map(v=>v+333333); R[0]++; upd(); }, 1400); };
+
+/* SENTINEL */
+const ss = $('#sStage'), sn = i => ss.querySelector(`[data-s="${i}"]`), nn = i => ss.querySelector(`[data-n="${i}"]`);
+const tl = [...$('#sTimeline').children];
+const on = i => tl[i].classList.add('on');
+function sReset(){ tl.forEach(l=>l.classList.remove('on')); [0,1,2].forEach(i=>{ sn(i).classList.remove('vote'); nn(i).classList.remove('down','master'); }); nn(0).classList.add('master'); $('#n0').textContent='Master'; $('#n1').textContent='Replica 1'; $('#n2').textContent='Replica 2'; nn(0).querySelector('.face').textContent='👩‍🏫'; nn(1).querySelector('.face').textContent='🧑‍🎓'; $('#sKill').disabled=false; $('#sBack').disabled=true; }
+$('#sKill').onclick = async () => {
+  $('#sKill').disabled = true;
+  nn(0).classList.add('down'); nn(0).querySelector('.face').textContent='😵';
+  await fly(ss, sn(0), nn(0), 'w', 600); sn(0).classList.add('vote'); on(0); await sleep(600);
+  await Promise.all([fly(ss, sn(0), sn(1), 'r', 500), fly(ss, sn(0), sn(2), 'r', 500)]);
+  sn(1).classList.add('vote'); await sleep(250); sn(2).classList.add('vote'); on(1); await sleep(700);
+  on(2); await sleep(700);
+  await fly(ss, sn(1), nn(1), 'w', 600);
+  nn(1).classList.add('master'); $('#n1').textContent='Master mới'; nn(1).querySelector('.face').textContent='👩‍🏫'; on(3); await sleep(600);
+  await fly(ss, nn(2), nn(1), 'r', 600); on(4);
+  $('#n0').textContent = 'Master cũ (sập)'; $('#sBack').disabled = false;
+};
+$('#sBack').onclick = async () => { $('#sBack').disabled=true; nn(0).classList.remove('down','master'); nn(0).querySelector('.face').textContent='🧑‍🎓'; $('#n0').textContent='Replica (giáng cấp)'; await fly(ss, nn(0), nn(1), 'r', 700); on(5); [0,1,2].forEach(i=>sn(i).classList.remove('vote')); };
+$('#sReset').onclick = sReset; sReset();
+
+/* CLUSTER */
+function crc16(str){ let c = 0; for (const b of new TextEncoder().encode(str)){ c ^= b << 8; for (let i=0;i<8;i++) c = (c & 0x8000) ? ((c<<1) ^ 0x1021) & 0xffff : (c<<1) & 0xffff; } return c; }
+function hashPart(k){ const s = k.indexOf('{'); if (s>-1){ const e = k.indexOf('}', s+1); if (e > s+1) return k.slice(s+1, e); } return k; }
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function lookup(){
+  const k = $('#key').value; if (!k) return;
+  const h = hashPart(k), c = crc16(h), slot = c % 16384, node = slot <= 5460 ? 0 : slot <= 10922 ? 1 : 2;
+  $('#pin').style.left = `calc(${slot/16383*100}% - 1.5px)`;
+  [...$('#slotbar').querySelectorAll('div')].forEach((d,i)=>d.classList.toggle('hit', i===node));
+  $('#calc').innerHTML = `key = "${esc(k)}"<br>phần đem băm = "${esc(h)}"${h!==k?' (hash tag)':''}<br>CRC16 = ${c}<br>${c} mod 16384 = <span class="big">slot ${slot}</span> → <span class="big">Node ${'ABC'[node]}</span>`;
+}
+$('#kGo').onclick = lookup; $('#key').addEventListener('keydown', e => { if (e.key==='Enter') lookup(); });
+['foo','bar','{user:42}:cart','{user:42}:profile','Tran','Tuan'].forEach(k => { const b = document.createElement('button'); b.textContent = k; b.onclick = () => { $('#key').value = k; lookup(); }; $('#chips').appendChild(b); });
+lookup();
+</script>
+</body>
+</html>

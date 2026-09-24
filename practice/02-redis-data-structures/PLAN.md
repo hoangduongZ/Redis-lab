@@ -48,9 +48,10 @@ practice/02-redis-data-structures/
 
 **Trọng tâm — so sánh trực diện:**
 - `GET /api/postgres-leaderboard/top10` — full scan + sort trên Postgres, trả kèm thời gian đo được (ms)
-- `POST /api/redis-leaderboard/scores?player=&score=` — tương đương `ZADD`
+- `POST /api/redis-leaderboard/scores?player=&score=` — chỉ ZADD vào Redis, dùng để demo/seed thêm nhanh, KHÔNG động tới Postgres
 - `GET /api/redis-leaderboard/top10` — `ZREVRANGE ... WITHSCORES`, trả kèm thời gian đo được (ms)
 - `GET /api/redis-leaderboard/rank/{player}` — bonus nhỏ: `ZREVRANK` + `ZSCORE`, cho thấy ZSet còn trả lời được cả "tôi đang xếp hạng thứ mấy" mà không cần quét gì cả
+- `POST /api/leaderboard/scores?player=&score=` — **flow thật của production**: ghi Postgres (nguồn sự thật, update nếu player đã tồn tại) trước, ZADD Redis (cache/index đọc nhanh) sau, trong cùng 1 method — dual-write đơn giản, chấp nhận rủi ro lệch tạm thời nếu bước Redis lỗi sau khi Postgres đã commit
 
 **Playground (mỗi cái 2 endpoint, đủ để sờ được, không đào sâu):**
 - `POST /api/queue/email` (LPUSH), `GET /api/queue/email/next` (RPOP)

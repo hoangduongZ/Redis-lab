@@ -63,8 +63,8 @@ practice/01-redis-caching-overview/
 - [x] Gọi `no-cache` nhiều lần → luôn ~2s.
 - [x] Gọi `manual-cache` lần 2 → ~0s, nhưng khi có 2 instance thì không nhất quán.
 - [x] Gọi `redis-cache` lần 2 → ~0s, nhất quán dù bao nhiêu instance.
-- [ ] Mở Redis Commander, tự tay thấy key `books::Harry Potter` nằm trong Redis — "nhìn thấy" bảng trắng, không chỉ tin bằng lời.
-- [ ] Không có bất kỳ dòng code nào đụng tới Sorted Set, phân tán, hay scaling nâng cao (để dành bài sau).
+- [x] Mở Redis Commander, tự tay thấy key `books::Harry Potter` nằm trong Redis — "nhìn thấy" bảng trắng, không chỉ tin bằng lời.
+- [x] Không có bất kỳ dòng code nào đụng tới Sorted Set, phân tán, hay scaling nâng cao (để dành bài sau).
 
 ## 6. Việc KHÔNG làm ở bài này (giữ đúng phạm vi giáo án 01)
 

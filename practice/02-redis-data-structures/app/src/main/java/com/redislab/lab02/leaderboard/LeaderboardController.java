@@ -41,6 +41,19 @@ public class LeaderboardController {
 		return Map.of("player", player, "score", score);
 	}
 
+	/**
+	 * Flow that gan voi production: ghi Postgres (nguon su that) truoc, ZADD
+	 * Redis (cache/index de doc nhanh) sau. Neu buoc Redis loi sau khi Postgres
+	 * da commit, 2 ben se lech nhau tam thoi - chap nhan rui ro nay o quy mo
+	 * dual-write don gian, thay vi outbox/CDC (qua muc cho pham vi bai hoc).
+	 */
+	@PostMapping("/leaderboard/scores")
+	public Map<String, Object> addScoreReal(@RequestParam String player, @RequestParam double score) {
+		postgresLeaderboardService.upsertScore(player, score);
+		redisLeaderboardService.addScore(player, score);
+		return Map.of("player", player, "score", score);
+	}
+
 	@GetMapping("/redis-leaderboard/top10")
 	public Map<String, Object> redisTop10() {
 		long start = System.currentTimeMillis();

@@ -25,22 +25,26 @@ Bài này **bắt buộc phải chạy từ 2 server trở lên**, nếu không 
 practice/03-redis-distributed-patterns/
 ├── PLAN.md
 └── app/
-    ├── docker-compose.yml        # redis + app-1 (8081) + app-2 (8082), cùng image
+    ├── docker-compose.yml        # redis + app-1 (8081) + app-2 (8082), cùng build từ Dockerfile
+    ├── Dockerfile                # multi-stage: build bằng mvnw, chạy bằng JRE — cần thiết vì bài này chạy app trong container, khác 01/02 chạy host
     ├── pom.xml
+    ├── README.md
     ├── src/main/java/com/redislab/lab03/
     │   ├── Lab03Application.java
     │   ├── ticket/
     │   │   ├── NaiveTicketService.java     # `synchronized` + boolean cờ trong RAM — nỗi đau
     │   │   ├── RedisLockTicketService.java # setIfAbsent(lockKey, userId, Duration) — thuốc giải, đúng code giáo án
-    │   │   ├── TicketController.java       # /api/naive-ticket/buy, /api/redis-ticket/buy, + /reset
-    │   ├── ratelimit/
-    │   │   ├── NaiveRateLimiterService.java # AtomicInteger đếm theo giây, riêng từng instance — để lộ điểm yếu tương tự bài toán trước (10 server = 10 bộ đếm riêng)
-    │   │   ├── RedisRateLimiterService.java # INCR + EXPIRE(1s) trên cùng 1 key theo IP — đúng cơ chế giáo án mô tả
-    │   │   └── LoginController.java        # /api/login?ip=... , trả 429 khi vượt ngưỡng
-    │   └── config/RedisConfig.java
+    │   │   └── TicketController.java       # /api/naive-ticket/buy, /api/redis-ticket/buy, + /reset
+    │   └── ratelimit/
+    │       ├── NaiveRateLimiterService.java # AtomicInteger đếm theo giây, riêng từng instance — để lộ điểm yếu tương tự bài toán trước (10 server = 10 bộ đếm riêng)
+    │       ├── RedisRateLimiterService.java # INCR + EXPIRE(1s) trên cùng 1 key theo IP — đúng cơ chế giáo án mô tả
+    │       └── LoginController.java        # /api/login/naive|redis?ip=... , trả 429 khi vượt ngưỡng
     └── scripts/
-        └── simulate-concurrent-buy.sh   # bắn N request mua vé song song, chia đều cho 2 cổng, đếm số vé "bán thành công"
+        ├── simulate-concurrent-buy.sh   # bắn N request mua vé song song, chia đều cho 2 cổng, đếm số vé "bán thành công"
+        └── simulate-login-flood.sh      # bắn N request login song song theo 1 IP, chia đều cho 2 cổng, đếm số request lọt qua/bị chặn
 ```
+
+Không thêm `config/RedisConfig.java` như dự kiến ban đầu: `StringRedisTemplate` đã được Spring Boot tự động cấu hình sẵn khi có `spring-boot-starter-data-redis`, không cần khai báo bean thủ công cho `setIfAbsent`/`INCR` thô.
 
 ### Endpoint dự kiến
 

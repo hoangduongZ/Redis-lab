@@ -1,6 +1,7 @@
 package com.redislab.lab02.leaderboard;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -19,5 +20,18 @@ public class PostgresLeaderboardService {
 
 	public List<PlayerScore> getTop10() {
 		return playerScoreRepository.findTop10ByScoreDesc();
+	}
+
+	/**
+	 * Postgres la nguon su that: update neu player da ton tai, insert neu chua co.
+	 */
+	@Transactional
+	public PlayerScore upsertScore(String playerName, double score) {
+		return playerScoreRepository.findByPlayerName(playerName)
+				.map(existing -> {
+					existing.setScore(score);
+					return existing;
+				})
+				.orElseGet(() -> playerScoreRepository.save(new PlayerScore(playerName, score)));
 	}
 }
